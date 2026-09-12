@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#020912" />
+  <title>JARVIS — Standalone Command Center</title>
+  <style>
+    :root{--cyan:#52e8ff;--blue:#168cff;--ice:#d9fbff;--muted:#6b9eb0;--panel:rgba(5,25,38,.62);--line:rgba(82,232,255,.25);--danger:#ff637d;--ok:#70ffc4}
+    *{box-sizing:border-box}html,body{height:100%;margin:0}body{overflow:hidden;background:#01050a;color:var(--ice);font-family:Inter,SFMono-Regular,Consolas,"Liberation Mono",monospace;letter-spacing:.04em}
+    body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 50% 46%,rgba(0,143,194,.18),transparent 35%),linear-gradient(rgba(3,13,22,.35),rgba(1,4,8,.95)),repeating-linear-gradient(0deg,transparent 0 3px,rgba(85,226,255,.025) 4px);pointer-events:none}
+    .grid{position:fixed;inset:0;opacity:.18;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;transform:perspective(600px) rotateX(62deg) scale(1.6) translateY(31%);mask-image:linear-gradient(transparent,#000 38%)}
+    button,input,select{font:inherit}.shell{position:relative;height:100%;padding:20px;display:grid;grid-template-rows:auto 1fr auto;gap:16px;z-index:1}
+    .topbar,.bottombar{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);background:rgba(2,13,22,.72);padding:11px 16px;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));backdrop-filter:blur(14px)}
+    .brand{display:flex;align-items:center;gap:12px}.sigil{width:28px;height:28px;border:2px solid var(--cyan);border-radius:50%;position:relative;box-shadow:0 0 15px var(--cyan)}.sigil:after{content:"";position:absolute;inset:5px;border:1px solid var(--cyan);transform:rotate(45deg)}
+    .brand b{font-size:14px;letter-spacing:.22em}.brand small,.telemetry{color:var(--muted);font-size:10px}.status{display:flex;gap:18px;align-items:center;font-size:10px;color:var(--muted)}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);margin-right:6px}
+    main{min-height:0;display:grid;grid-template-columns:minmax(190px,260px) 1fr minmax(220px,300px);gap:16px}.panel{min-height:0;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(14px);position:relative;overflow:hidden}.panel:before,.panel:after{content:"";position:absolute;width:30px;height:3px;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}.panel:before{top:0;left:0}.panel:after{right:0;bottom:0}
+    .panel-title{padding:12px 14px;border-bottom:1px solid var(--line);font-size:10px;color:var(--cyan);letter-spacing:.18em}.left,.right{display:flex;flex-direction:column}.metrics{padding:14px;display:grid;gap:14px}.metric-head{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:6px}.bar{height:3px;background:rgba(255,255,255,.08)}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));box-shadow:0 0 8px var(--cyan)}
+    .quick{margin-top:auto;padding:12px;display:grid;gap:7px}.quick button,.icon-btn{border:1px solid var(--line);background:rgba(10,52,70,.36);color:var(--ice);padding:9px;cursor:pointer;text-align:left;transition:.2s}.quick button:hover,.icon-btn:hover{border-color:var(--cyan);background:rgba(20,112,142,.3);box-shadow:inset 3px 0 var(--cyan)}
+    .center{display:grid;grid-template-rows:1fr minmax(160px,32%);gap:16px;min-height:0}.core-wrap{position:relative;display:grid;place-items:center;overflow:hidden}.core{width:min(35vw,330px);aspect-ratio:1;border-radius:50%;position:relative;display:grid;place-items:center;border:1px solid rgba(82,232,255,.38);box-shadow:0 0 70px rgba(0,180,255,.12),inset 0 0 60px rgba(26,183,255,.08)}
+    .ring{position:absolute;border-radius:50%;border:1px solid var(--line);inset:7%;animation:spin 13s linear infinite}.ring:nth-child(2){inset:17%;border-style:dashed;animation-duration:8s;animation-direction:reverse}.ring:nth-child(3){inset:28%;border-width:3px;border-color:rgba(82,232,255,.55);animation-duration:5s}.ring:after{content:"";position:absolute;top:50%;left:-4px;width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 14px var(--cyan)}
+    @keyframes spin{to{transform:rotate(360deg)}}.orb{width:33%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 42% 38%,white 0 2%,var(--cyan) 9%,#087ba6 36%,#021a2b 66%,transparent 68%);box-shadow:0 0 35px var(--blue);animation:breathe 2.7s ease-in-out infinite}.listening .orb{animation:pulse .7s ease-in-out infinite}.thinking .orb{animation:spin 1.1s linear infinite}.speaking .orb{animation:pulse .22s ease-in-out infinite}
+    @keyframes breathe{50%{transform:scale(1.06);filter:brightness(1.25)}}@keyframes pulse{50%{transform:scale(1.16);filter:brightness(1.8)}}.core-label{position:absolute;bottom:14%;font-size:10px;color:var(--cyan);letter-spacing:.25em}.hint{position:absolute;bottom:5%;font-size:9px;color:var(--muted)}
+    .terminal{display:flex;flex-direction:column}.log{padding:12px;overflow:auto;flex:1;font-size:11px;line-height:1.55}.entry{margin:0 0 10px}.entry .who{font-size:8px;color:var(--cyan);letter-spacing:.18em}.entry.user .who{color:var(--ok)}.entry.error{color:var(--danger)}
+    .composer{display:flex;border-top:1px solid var(--line);padding:8px;gap:8px}.composer input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:white;padding:8px}.composer button,.mic{border:1px solid var(--cyan);background:rgba(31,172,206,.14);color:var(--cyan);padding:8px 14px;cursor:pointer}.mic.active{background:var(--cyan);color:#001018;box-shadow:0 0 18px var(--cyan)}
+    .clock{padding:18px 14px;border-bottom:1px solid var(--line)}#time{font-size:32px;letter-spacing:.08em}.date{font-size:9px;color:var(--muted);margin-top:6px}.wave{height:58px;padding:13px;display:flex;align-items:center;justify-content:center;gap:4px;border-bottom:1px solid var(--line)}.wave i{width:3px;height:10px;background:var(--cyan);opacity:.7;animation:wave 1.2s ease-in-out infinite;animation-play-state:paused}.listening .wave i,.speaking .wave i{animation-play-state:running}.wave i:nth-child(2n){animation-delay:.2s}.wave i:nth-child(3n){animation-delay:.4s}@keyframes wave{50%{height:40px;opacity:1;box-shadow:0 0 8px var(--cyan)}}
+    .events{padding:12px;overflow:auto;font-size:9px;color:var(--muted);flex:1}.event{padding:8px 0;border-bottom:1px solid rgba(82,232,255,.1)}.event b{color:var(--ice);font-weight:500}.bottombar{font-size:9px;color:var(--muted)}.controls{display:flex;gap:8px}.icon-btn{padding:6px 10px;text-align:center}
+    dialog{width:min(520px,calc(100% - 30px));border:1px solid var(--cyan);color:var(--ice);background:#06131d;box-shadow:0 0 60px rgba(0,180,255,.28);padding:0}dialog::backdrop{background:rgba(0,4,8,.75);backdrop-filter:blur(6px)}.modal-head{padding:15px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.modal-body{padding:16px;display:grid;gap:14px}.field{display:grid;gap:6px;font-size:9px;color:var(--muted)}.field input,.field select{background:#03101a;border:1px solid var(--line);color:white;padding:10px}.actions{display:flex;justify-content:flex-end;gap:8px;padding:0 16px 16px}
+    @media(max-width:850px){main{grid-template-columns:1fr}.left,.right{display:none}.shell{padding:10px}.status span:not(:first-child){display:none}.core{width:min(65vw,300px)}}
+  </style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="shell" id="shell">
+    <header class="topbar">
+      <div class="brand"><span class="sigil"></span><div><b>A.R.C.</b><small><br>ASSISTIVE RESPONSE CORE</small></div></div>
+      <div class="status"><span><i class="dot"></i>SYSTEM ONLINE</span><span id="aiStatus">AI: CHECKING</span><span id="locationStatus">LOCATION: STANDBY</span></div>
+    </header>
+    <main>
+      <section class="panel left">
+        <div class="panel-title">SYSTEM TELEMETRY</div>
+        <div class="metrics">
+          <div><div class="metric-head"><span>VOICE ENGINE</span><span id="voiceMetric">READY</span></div><div class="bar"><i style="width:92%"></i></div></div>
+          <div><div class="metric-head"><span>MEMORY BANK</span><span id="memoryMetric">0 ITEMS</span></div><div class="bar"><i id="memoryBar" style="width:4%"></i></div></div>
+          <div><div class="metric-head"><span>RESPONSE CORE</span><span>OPTIMAL</span></div><div class="bar"><i style="width:98%"></i></div></div>
+        </div>
+        <div class="quick">
+          <button data-command="what time is it">TIME ANALYSIS</button>
+          <button data-command="weather here">LOCAL WEATHER</button>
+          <button data-command="what do you remember">MEMORY RECALL</button>
+          <button data-command="system status">SYSTEM REPORT</button>
+          <button id="clearBtn">CLEAR CONSOLE</button>
+        </div>
+      </section>
+      <section class="center">
+        <div class="panel core-wrap">
+          <div class="core"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="orb"></div><div class="core-label" id="coreState">STANDBY</div></div>
+          <div class="hint">SAY “<span id="wakeHint">JARVIS</span>” OR PRESS SPACE</div>
+        </div>
+        <div class="panel terminal">
+          <div class="panel-title">COMMAND INTERFACE</div>
+          <div class="log" id="log"></div>
+          <form class="composer" id="commandForm"><input id="commandInput" autocomplete="off" placeholder="Enter a command…"/><button type="button" class="mic" id="micBtn">LISTEN</button><button>SEND</button></form>
+        </div>
+      </section>
+      <section class="panel right">
+        <div class="panel-title">LIVE OPERATIONS</div>
+        <div class="clock"><div id="time">00:00:00</div><div class="date" id="date">INITIALISING</div></div>
+        <div class="wave">${Array.from({length:24},()=>"<i></i>").join("")}</div>
+        <div class="events" id="events"></div>
+      </section>
+    </main>
+    <footer class="bottombar"><span>WAKE ENGINE: <b id="wakeStatus">ARMED</b></span><span class="telemetry">SPACE: TALK · ESC: STOP · /: TYPE</span><div class="controls"><button class="icon-btn" id="muteBtn">VOICE ON</button><button class="icon-btn" id="settingsBtn">SETTINGS</button></div></footer>
+  </div>
+  <dialog id="settings">
+    <div class="modal-head"><b>CORE CONFIGURATION</b><button class="icon-btn" id="closeSettings">×</button></div>
+    <div class="modal-body">
+      <label class="field">WAKE PHRASE<input id="wakeInput" maxlength="24" /></label>
+      <label class="field">VOICE<select id="voiceSelect"></select></label>
+      <label class="field">SPEECH RATE<input id="rateInput" type="range" min="0.7" max="1.25" step="0.05" /></label>
+      <label class="field">YOUR NAME (OPTIONAL)<input id="nameInput" maxlength="40" /></label>
+    </div><div class="actions"><button class="icon-btn" id="saveSettings">SAVE CONFIGURATION</button></div>
+  </dialog>
+  <script>
+    const $=s=>document.querySelector(s), shell=$("#shell"), log=$("#log"), events=$("#events");
+    const defaults={wake:"jarvis",voiceURI:"",rate:0.92,name:"",muted:false};
+    let settings={...defaults,...JSON.parse(localStorage.getItem("arc-settings")||"{}")};
+    let history=JSON.parse(localStorage.getItem("arc-history")||"[]").slice(-12);
+    let memories=JSON.parse(localStorage.getItem("arc-memories")||"[]");
+    let recognition=null,listening=false,manualListen=false,aiEnabled=false,voices=[];
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+    function setState(state){shell.classList.remove("listening","thinking","speaking");if(state!=="standby")shell.classList.add(state);$("#coreState").textContent=state.toUpperCase();}
+    function addLog(who,text,type=""){const e=document.createElement("div");e.className=`entry ${who} ${type}`;e.innerHTML=`<div class="who">${who==="user"?"OPERATOR":"A.R.C."}</div><div></div>`;e.lastElementChild.textContent=text;log.append(e);log.scrollTop=log.scrollHeight;}
+    function event(text){const e=document.createElement("div");e.className="event";e.innerHTML=`<b>${new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</b> · ${text}`;events.prepend(e);while(events.children.length>8)events.lastChild.remove();}
+    function save(){localStorage.setItem("arc-settings",JSON.stringify(settings));localStorage.setItem("arc-memories",JSON.stringify(memories));localStorage.setItem("arc-history",JSON.stringify(history.slice(-12)));updateMetrics();}
+    function updateMetrics(){$("#memoryMetric").textContent=`${memories.length} ITEMS`;$("#memoryBar").style.width=Math.min(100,4+memories.length*8)+"%";$("#wakeHint").textContent=settings.wake.toUpperCase();$("#wakeStatus").textContent=SpeechRecognition?"ARMED":"UNAVAILABLE";}
+    function tick(){const d=new Date();$("#time").textContent=d.toLocaleTimeString([], {hour12:false});$("#date").textContent=d.toLocaleDateString([], {weekday:"long",year:"numeric",month:"long",day:"numeric"}).toUpperCase();}tick();setInterval(tick,1000);
+
+    function loadVoices(){voices=speechSynthesis.getVoices();$("#voiceSelect").innerHTML="";voices.forEach(v=>{const o=document.createElement("option");o.value=v.voiceURI;o.textContent=`${v.name} — ${v.lang}`;$("#voiceSelect").append(o)});if(!settings.voiceURI){const preferred=voices.find(v=>/Daniel|Arthur|Oliver|British|UK/i.test(v.name)&&/^en-GB/i.test(v.lang))||voices.find(v=>/^en-GB/i.test(v.lang))||voices.find(v=>/^en/i.test(v.lang));settings.voiceURI=preferred?.voiceURI||"";}$("#voiceSelect").value=settings.voiceURI;$("#voiceMetric").textContent=voices.length?"READY":"LIMITED";}
+    speechSynthesis.onvoiceschanged=loadVoices;loadVoices();
+    function speak(text){if(settings.muted||!text)return; speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text.replace(/A\.R\.C\./g,"Arc"));u.voice=voices.find(v=>v.voiceURI===settings.voiceURI)||null;u.rate=Number(settings.rate);u.pitch=.82;u.volume=1;u.onstart=()=>setState("speaking");u.onend=()=>setState(listening?"listening":"standby");speechSynthesis.speak(u);}
+    function reply(text,say=true){addLog("assistant",text);history.push({role:"assistant",content:text});save();if(say)speak(text);}
+    function user(text){addLog("user",text);history.push({role:"user",content:text});save();}
+
+    function initRecognition(){if(!SpeechRecognition){reply("Voice recognition is unavailable in this browser. Chrome or Edge is recommended.",false);return;}recognition=new SpeechRecognition();recognition.continuous=true;recognition.interimResults=true;recognition.lang="en-AU";
+      recognition.onstart=()=>{listening=true;setState("listening");$("#micBtn").classList.add("active");$("#micBtn").textContent="LISTENING";event("Voice channel opened")};
+      recognition.onend=()=>{listening=false;$("#micBtn").classList.remove("active");$("#micBtn").textContent="LISTEN";setState("standby");if(manualListen)setTimeout(()=>{try{recognition.start()}catch{}},450)};
+      recognition.onerror=e=>{if(!["no-speech","aborted"].includes(e.error))event(`Voice error: ${e.error}`)};
+      recognition.onresult=e=>{let final="",interim="";for(let i=e.resultIndex;i<e.results.length;i++){(e.results[i].isFinal?final+=e.results[i][0].transcript:interim+=e.results[i][0].transcript)}if(interim)$("#commandInput").value=interim;if(final){$("#commandInput").value="";const heard=final.trim();const lower=heard.toLowerCase();const wake=lower.indexOf(settings.wake.toLowerCase());if(manualListen||wake>=0){const command=wake>=0?heard.slice(wake+settings.wake.length).replace(/^[,\s]+/,""):heard;if(command)execute(command);else reply("At your service.");}}};
+    }
+    function toggleMic(){if(!recognition)initRecognition();if(!recognition)return;manualListen=!listening;if(listening){manualListen=false;recognition.stop()}else{manualListen=true;try{recognition.start()}catch{}}}
+
+    function parseDuration(text){const m=text.match(/(\d+(?:\.\d+)?)\s*(second|minute|hour)s?/i);if(!m)return null;return Number(m[1])*({second:1000,minute:60000,hour:3600000}[m[2].toLowerCase()]);}
+    function calculate(expression){const clean=expression.toLowerCase().replace(/multiplied by|times/g,"*").replace(/divided by|over/g,"/").replace(/plus/g,"+").replace(/minus/g,"-").replace(/[^0-9+\-*/().% ]/g,"");if(!clean||!/^[0-9+\-*/().% ]+$/.test(clean))return null;try{const value=Function(`"use strict";return (${clean})`)();return Number.isFinite(value)?value:null}catch{return null}}
+    async function weather(command){setState("thinking");try{let lat,lon,label="your location";const place=command.replace(/.*weather(?: in| for| at)?\s*/i,"").trim();if(place&&!/^(here|today|outside)$/.test(place)){const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=en&format=json`).then(r=>r.json());if(!g.results?.[0])throw Error("I couldn't locate that place.");({latitude:lat,longitude:lon,name:label}=g.results[0]);}else{const pos=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{timeout:7000}));lat=pos.coords.latitude;lon=pos.coords.longitude;$("#locationStatus").textContent="LOCATION: ACTIVE";}const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`).then(r=>r.json());const c=w.current;const conditions={0:"clear",1:"mainly clear",2:"partly cloudy",3:"overcast",45:"foggy",48:"foggy",51:"light drizzle",53:"drizzly",55:"heavy drizzle",61:"light rain",63:"rainy",65:"heavy rain",71:"light snow",73:"snowy",75:"heavy snow",80:"showery",81:"showery",82:"heavy showers",95:"stormy"}[c.weather_code]||"changeable";reply(`In ${label}, it is ${Math.round(c.temperature_2m)} degrees and ${conditions}. It feels like ${Math.round(c.apparent_temperature)} degrees, with winds near ${Math.round(c.wind_speed_10m)} kilometres per hour.`);}catch(e){reply(e.message||"I couldn't retrieve the weather.");}}
+    async function askAI(message){return answerStandalone(message)}
+    async function answerStandalone(message){
+      setState("thinking");
+      const topic=message.replace(/^(who|what|where|when)\s+(is|are|was|were)\s+/i,"").replace(/[?.!]+$/g,"").trim();
+      if(topic.length>1){
+        try{
+          const r=await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`);
+          const data=await r.json();
+          if(r.ok&&data.extract){const text=data.extract.split(/(?<=[.!?])\s+/).slice(0,2).join(" ");return reply(text)}
+        }catch{}
+      }
+      reply("I can handle time, dates, weather, timers, calculations, memory, website shortcuts and web searches in standalone mode. Say search for, followed by what you need.",false);
+      setState(listening?"listening":"standby");
+    }
+
+    async function execute(raw){const command=raw.trim();if(!command)return;user(command);event(`Command: ${command.slice(0,36)}`);const q=command.toLowerCase().replace(/[?.!]+$/g,"");
+      if(/^(hello|hi|hey|good morning|good evening)/.test(q))return reply(`${settings.name?`Hello, ${settings.name}.`:"Hello."} Systems are online and ready.`);
+      if(/(?:what(?:'s| is) the time|time is it|current time)/.test(q))return reply(`The time is ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}.`);
+      if(/(?:what(?:'s| is) the date|what day|today'?s date)/.test(q))return reply(`Today is ${new Date().toLocaleDateString([], {weekday:"long",day:"numeric",month:"long",year:"numeric"})}.`);
+      if(q.includes("weather"))return weather(command);
+      if(/^(?:calculate|compute|what is)\s+/.test(q)){const result=calculate(q.replace(/^(?:calculate|compute|what is)\s+/,""));if(result!==null)return reply(`The result is ${result}.`)}
+      if(/(?:set|start).*(?:timer)/.test(q)){const ms=parseDuration(q);if(!ms)return reply("Tell me a duration, such as: set a timer for five minutes.");const label=q.replace(/.*timer(?: for)?/,"").trim();setTimeout(()=>{reply(`Timer complete${label?`: ${label}`:""}.`);event("Timer completed")},ms);return reply(`Timer set for ${Math.round(ms/1000)} seconds.`)}
+      if(q.startsWith("remember ")){const fact=command.slice(9).trim();memories.push({fact,at:Date.now()});save();return reply("Stored in local memory.")}
+      if(/what do you remember|recall memory|show memory/.test(q))return reply(memories.length?`I remember: ${memories.map(m=>m.fact).join("; ")}.`:"Local memory is currently empty.");
+      if(/forget everything|clear memory/.test(q)){memories=[];save();return reply("Local memory cleared.")}
+      if(/system status|diagnostic/.test(q))return reply(`All browser systems are operational. Voice recognition is ${SpeechRecognition?"available":"unavailable"}. AI mode is ${aiEnabled?"connected":"not configured"}. I have ${memories.length} local memory items.`);
+      const open=q.match(/^open\s+(youtube|google|github|spotify|maps|gmail)$/);if(open){const urls={youtube:"https://youtube.com",google:"https://google.com",github:"https://github.com",spotify:"https://open.spotify.com",maps:"https://maps.google.com",gmail:"https://mail.google.com"};window.open(urls[open[1]],"_blank","noopener");return reply(`Opening ${open[1]}.`)}
+      const search=q.match(/^(?:search(?: the web)? for|google)\s+(.+)/);if(search){window.open(`https://www.google.com/search?q=${encodeURIComponent(search[1])}`,"_blank","noopener");return reply(`Searching the web for ${search[1]}.`)}
+      if(/^(stop|be quiet|silence)$/.test(q)){speechSynthesis.cancel();return setState(listening?"listening":"standby")}
+      return askAI(command);
+    }
+
+    $("#commandForm").addEventListener("submit",e=>{e.preventDefault();const v=$("#commandInput").value;$("#commandInput").value="";execute(v)});$("#micBtn").onclick=toggleMic;
+    document.querySelectorAll("[data-command]").forEach(b=>b.onclick=()=>execute(b.dataset.command));
+    $("#clearBtn").onclick=()=>{log.innerHTML="";history=[];save();reply("Console cleared.",false)};
+    $("#muteBtn").onclick=()=>{settings.muted=!settings.muted;$("#muteBtn").textContent=settings.muted?"VOICE OFF":"VOICE ON";if(settings.muted)speechSynthesis.cancel();save()};
+    $("#settingsBtn").onclick=()=>{$("#wakeInput").value=settings.wake;$("#rateInput").value=settings.rate;$("#nameInput").value=settings.name;$("#voiceSelect").value=settings.voiceURI;$("#settings").showModal()};$("#closeSettings").onclick=()=>$("#settings").close();
+    $("#saveSettings").onclick=()=>{settings.wake=$("#wakeInput").value.trim().toLowerCase()||"jarvis";settings.rate=Number($("#rateInput").value);settings.name=$("#nameInput").value.trim();settings.voiceURI=$("#voiceSelect").value;save();$("#settings").close();reply("Configuration updated.")};
+    document.addEventListener("keydown",e=>{if(e.code==="Space"&&!/INPUT|SELECT/.test(e.target.tagName)){e.preventDefault();toggleMic()}if(e.key==="Escape"){speechSynthesis.cancel();if(listening){manualListen=false;recognition.stop()}}if(e.key==="/"&&!/INPUT/.test(e.target.tagName)){e.preventDefault();$("#commandInput").focus()}});
+    aiEnabled=false;$("#aiStatus").textContent="AI: STANDALONE";
+    updateMetrics();$("#muteBtn").textContent=settings.muted?"VOICE OFF":"VOICE ON";history.forEach(m=>addLog(m.role==="user"?"user":"assistant",m.content));if(!history.length)reply("Standalone command center online. Press Listen and allow microphone access to activate the wake engine.",false);event("Core initialisation complete");
+  </script>
+</body>
+</html>
